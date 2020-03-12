@@ -1,0 +1,82 @@
+---
+title: "Reproducible Research: Project1"
+author: "Alpa Narwariya"
+date: "3/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load Data
+
+Loading individual's activity data for the month of Oct and Nov 2012 recorded using  personal activity monitoring device from CSV file "activity.csv"
+
+```{r}
+activityData <- read.csv("activity.csv")
+```
+
+### Mean Total number of steps taken per day
+
+Calculating the total numbers of steps taken per day and showing a histogram of total no of steps taken per day.Then reporting the mean and median of total no of steps taken per day
+
+```{r}
+library(dplyr)
+totalSteps <- activityData %>% group_by(date) %>% summarise(steps=sum(steps, na.rm=TRUE))
+hist(totalSteps$steps, main="Steps Taken Per Day", xlab="Total Steps")
+mean(totalSteps$steps,na.rm=TRUE)
+median(totalSteps$steps, na.rm=TRUE)
+```
+The average number of steps taken per day was 9354.
+The median number of steps taken per day was 10395.
+
+### Average daily activity pattern
+Showing a time series plot of the 5-minute interval and average no of steps taken. Then showing which 5-minute interval takes maximum no of steps averaged across all days
+``` {r}
+stepsPerInterval <- activityData %>% group_by(interval) %>% summarise(steps=mean(steps, na.rm=TRUE))
+plot(stepsPerInterval$interval, stepsPerInterval$steps, type="l", main="Steps Taken per Interval", xlab="Time Interval", ylab="Steps Taken")
+stepsPerInterval[stepsPerInterval$steps==max(stepsPerInterval$steps),1]
+```
+The maximum number of steps for 5 minute interval was 206 steps.
+The interval that took maximun no of steps averaged across all days was 835.
+
+### Input missing values
+First calculating the total number of missing values in the dataset and then creating a new dataste in which missing values are filled in with the mean value for respective 5-minute interval. Then creating a histogramn of total no of steps taken each day and reporting the mean and median total no of steps taken per day.
+
+``` {r}
+sum(is.na(activityData$steps))
+activityData2 <- activityData
+for(i in 1:nrow(activityData2)) {
+  if (is.na(activityData2$steps[i])){
+     interval=activityData2$interval[i]
+     activityData2$steps[i] <- stepsPerInterval[stepsPerInterval$interval==interval,]$steps
+  }
+      
+}
+totalSteps2 <- activityData2 %>% group_by(date) %>% summarise(steps=sum(steps))
+hist(totalSteps2$steps, main="Steps Taken Per Day with NAs fixed", xlab="Total Steps", col="Black")
+hist(totalSteps$steps, main="Steps Taken Per Day with NAs fixed", xlab="Total Steps", col="Grey", add=T)
+legend("topright", c("Imputed Data", "Non-NA Data"), fill=c("black", "grey"))
+
+mean(totalSteps2$steps,na.rm=TRUE)
+median(totalSteps2$steps, na.rm=TRUE)
+```
+Altough the shape of histogram has not changed much, the mean of the imputed data is 10766 compared to the old mean of 9354 and the new median of imputed data is also 10766 compared to old median of 10395.
+
+### Differences in activity patterns between weekdays and weekends
+First adding a new column to the activities dataset indicating wheather a date is falling on "Weekday" or "Weekend".
+``` {r}
+for (i in 1:nrow(activityData)) {
+  if (weekdays(as.Date(activityData$date[i])) %in% c("Saturday", "Sunday"))
+    activityData$dayType[i] <- "Weekend"
+  else
+    activityData$dayType[i] <- "Weekday"
+}
+stepsPerIntervalPerDayType <- activityData %>% group_by(dayType, interval) %>% summarise(avg=mean(steps, na.rm=TRUE))
+library(lattice)
+xyplot(avg~interval|dayType,data=stepsPerIntervalPerDayType, type="l", layout=c(1,2), 
+       main ="Average steps per Interval based on Type of Day",
+       ylab = "Average number of steps", xlab="Interval")
+```
+Yes, the activity patterns are different on weekdays and weekends as expected.
